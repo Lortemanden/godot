@@ -34,6 +34,82 @@
 #include "servers/camera/camera_feed.h"
 #include "servers/camera_server.h"
 
+#include <comdef.h>
+
+// Media Foundation Includes
+#include <mfapi.h>
+#include <mfidl.h>
+#include <mfreadwrite.h>
+
+#ifndef MF_READWRITE_DISABLE_CONVERTERS
+EXTERN_GUID(MF_READWRITE_DISABLE_CONVERTERS, 0x98d5b065, 0x1374, 0x4847, 0x8d, 0x5d, 0x31, 0x52, 0x0f, 0xee, 0x71, 0x56);
+#endif
+
+#include <shlwapi.h>
+//black magic https://social.msdn.microsoft.com/Forums/vstudio/en-US/d9c11696-4334-46b3-8e3d-37850238b514/vs-2014-question-have-i-found-a-problem?forum=visualstudiogeneral
+#undef OFFSETOFCLASS
+#define OFFSETOFCLASS(base, derived) ((int)((unsigned __int64)((base *)((derived *)8)) - 8ULL))
+
+class CameraFeedWindows : public CameraFeed, public IMFSourceReaderCallback {
+private:
+	// using ms samples naming
+	IMFActivate *pActivate;
+	HRESULT CloseDevice();
+
+	// device.h
+	UINT m_width;
+	UINT m_height;
+	const UINT m_depth = 4;
+	LONG m_lDefaultStride;
+	MFRatio m_PixelAR;
+	MFVideoInterlaceMode m_interlace;
+
+	PoolVector<uint8_t> img_data;
+
+protected:
+	void NotifyError(HRESULT hr);
+	long m_nRefCount; // Reference count.
+	CRITICAL_SECTION m_critsec;
+
+	IMFSourceReader *m_pReader;
+	WCHAR *m_pwszSymbolicLink;
+	UINT32 m_cchSymbolicLink;
+
+public:
+	CameraFeedWindows();
+	virtual ~CameraFeedWindows();
+
+	void set_device(IMFActivate *p_device);
+
+	bool activate_feed();
+	void deactivate_feed();
+
+	// virtual functions needed to be implemented for callbacks
+
+	// IUnknown methods
+	STDMETHODIMP QueryInterface(REFIID iid, void **ppv);
+	STDMETHODIMP_(ULONG)
+	AddRef();
+	STDMETHODIMP_(ULONG)
+	Release();
+
+	// IMFSourceReaderCallback methods
+	STDMETHODIMP OnReadSample(
+			HRESULT hrStatus,
+			DWORD dwStreamIndex,
+			DWORD dwStreamFlags,
+			LONGLONG llTimestamp,
+			IMFSample *pSample);
+
+	STDMETHODIMP OnEvent(DWORD, IMFMediaEvent *) {
+		return S_OK;
+	}
+
+	STDMETHODIMP OnFlush(DWORD) {
+		return S_OK;
+	}
+};
+
 class CameraWindows : public CameraServer {
 private:
 	void add_active_cameras();
