@@ -45,9 +45,17 @@
 EXTERN_GUID(CUSTOM_MF_READWRITE_DISABLE_CONVERTERS, 0x98d5b065, 0x1374, 0x4847, 0x8d, 0x5d, 0x31, 0x52, 0x0f, 0xee, 0x71, 0x56);
 
 #include <shlwapi.h>
+
 //black magic https://social.msdn.microsoft.com/Forums/vstudio/en-US/d9c11696-4334-46b3-8e3d-37850238b514/vs-2014-question-have-i-found-a-problem?forum=visualstudiogeneral
 #undef OFFSETOFCLASS
 #define OFFSETOFCLASS(base, derived) ((int)((unsigned __int64)((base *)((derived *)8)) - 8ULL))
+
+#undef QITABENTMULTI
+#define QITABENTMULTI(Cthis, Ifoo, Iimpl) \
+	{ &__uuidof(Ifoo), OFFSETOFCLASS(Iimpl, Cthis) }
+
+#undef QITABENT
+#define QITABENT(Cthis, Ifoo) QITABENTMULTI(Cthis, Ifoo, Ifoo)
 
 class CameraFeedWindows : public CameraFeed, public IMFSourceReaderCallback {
 private:
