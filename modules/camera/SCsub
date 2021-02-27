@@ -9,12 +9,12 @@ if env["platform"] == "windows":
     env_camera.add_source_files(env.modules_sources, "register_types.cpp")
     env_camera.add_source_files(env.modules_sources, "camera_win.cpp")
     MF_LIBS = [
-    "Mfplat",
-    "Mf",
-    "Mfreadwrite",
-    "Mfuuid",
+        "Mfplat",
+        "Mf",
+        "Mfreadwrite",
+        "Mfuuid",
     ]
-    env.Append(LIBS = MF_LIBS)
+    env.Append(LIBS=MF_LIBS)
 
 elif env["platform"] == "osx":
     env_camera.add_source_files(env.modules_sources, "register_types.cpp")
