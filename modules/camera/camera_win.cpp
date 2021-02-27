@@ -399,7 +399,7 @@ bool CameraFeedWindows::activate_feed() {
 	}
 
 	if (SUCCEEDED(hr)) {
-		hr = pAttributes->SetUINT32(MF_READWRITE_DISABLE_CONVERTERS, TRUE);
+		hr = pAttributes->SetUINT32(CUSTOM_MF_READWRITE_DISABLE_CONVERTERS, TRUE);
 		if (FAILED(hr)) {
 			printf("Set attribute (disable converter) failed\n");
 		}

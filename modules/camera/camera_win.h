@@ -41,8 +41,8 @@
 #include <mfidl.h>
 #include <mfreadwrite.h>
 
-#undef MF_READWRITE_DISABLE_CONVERTERS
-EXTERN_GUID(MF_READWRITE_DISABLE_CONVERTERS, 0x98d5b065, 0x1374, 0x4847, 0x8d, 0x5d, 0x31, 0x52, 0x0f, 0xee, 0x71, 0x56);
+//Some versions of the windows api apparently don't have this, so I am creating it manualy
+EXTERN_GUID(CUSTOM_MF_READWRITE_DISABLE_CONVERTERS, 0x98d5b065, 0x1374, 0x4847, 0x8d, 0x5d, 0x31, 0x52, 0x0f, 0xee, 0x71, 0x56);
 
 #include <shlwapi.h>
 //black magic https://social.msdn.microsoft.com/Forums/vstudio/en-US/d9c11696-4334-46b3-8e3d-37850238b514/vs-2014-question-have-i-found-a-problem?forum=visualstudiogeneral
