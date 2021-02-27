@@ -228,6 +228,8 @@ HRESULT CameraFeedWindows::QueryInterface(REFIID riid, void **ppv) {
 	static const QITAB qit[] = {
 		QITABENT(CameraFeedWindows, IMFSourceReaderCallback),
 		{ 0 },
+//QITABENT can cause problems with some compilers. This should allow us to ignore the warning.
+#pragma warning(suppress : 4838)
 	};
 	return QISearch(this, qit, riid, ppv);
 }
