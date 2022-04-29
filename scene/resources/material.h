@@ -84,6 +84,8 @@ class ShaderMaterial : public Material {
 
 	Map<StringName, Variant> param_cache;
 
+	Ref<Material> shadow_pass;
+	
 protected:
 	bool _set(const StringName &p_name, const Variant &p_value);
 	bool _get(const StringName &p_name, Variant &r_ret) const;
@@ -110,6 +112,9 @@ public:
 	virtual Shader::Mode get_shader_mode() const override;
 
 	virtual RID get_shader_rid() const override;
+
+	void set_shadow_pass(const Ref<Material> &p_pass);
+	Ref<Material> get_shadow_pass() const;
 
 	ShaderMaterial();
 	~ShaderMaterial();

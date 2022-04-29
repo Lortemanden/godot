@@ -2525,6 +2525,23 @@ void MaterialStorage::material_set_next_pass(RID p_material, RID p_next_material
 	material->dependency.changed_notify(RendererStorage::DEPENDENCY_CHANGED_MATERIAL);
 }
 
+void MaterialStorage::material_set_shadow_pass(RID p_material, RID p_shadow_material) {
+	Material *material = material_owner.get_or_null(p_material);
+	ERR_FAIL_COND(!material);
+
+	if (material->shadow_pass == p_shadow_material) {
+		return;
+	}
+
+	material->shadow_pass = p_shadow_material;
+	if (material->data) {
+		material->data->set_shadow_pass(p_shadow_material);
+	}
+
+	//TODO: look into me!!!
+	material->dependency.changed_notify(RendererStorage::DEPENDENCY_CHANGED_MATERIAL);
+}
+
 void MaterialStorage::material_set_render_priority(RID p_material, int priority) {
 	Material *material = material_owner.get_or_null(p_material);
 	ERR_FAIL_COND(!material);

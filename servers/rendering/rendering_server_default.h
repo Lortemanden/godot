@@ -245,6 +245,7 @@ public:
 
 	FUNC2(material_set_render_priority, RID, int)
 	FUNC2(material_set_next_pass, RID, RID)
+	FUNC2(material_set_shadow_pass, RID, RID)
 
 	/* MESH API */
 

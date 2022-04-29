@@ -290,6 +290,28 @@ void ShaderMaterial::_shader_changed() {
 	notify_property_list_changed(); //update all properties
 }
 
+void ShaderMaterial::set_shadow_pass(const Ref<Material> &p_pass) {
+	//for (Ref<Material> pass_child = p_pass; pass_child != nullptr; pass_child = pass_child->get_shadow_pass()) {
+	//	ERR_FAIL_COND_MSG(pass_child == this, "Can't set as shadow_pass one of its parents to prevent crashes due to recursive loop.");
+	//}
+
+	if (shadow_pass == p_pass) {
+		return;
+	}
+
+	shadow_pass = p_pass;
+	RID shadow_pass_rid;
+	if (shadow_pass.is_valid()) {
+		shadow_pass_rid = shadow_pass->get_rid();
+	}
+	RS::get_singleton()->material_set_shadow_pass(_get_material(), shadow_pass_rid);
+}
+
+Ref<Material> ShaderMaterial::get_shadow_pass() const {
+	return shadow_pass;
+}
+
+
 void ShaderMaterial::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_shader", "shader"), &ShaderMaterial::set_shader);
 	ClassDB::bind_method(D_METHOD("get_shader"), &ShaderMaterial::get_shader);
@@ -297,8 +319,12 @@ void ShaderMaterial::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_shader_param", "param"), &ShaderMaterial::get_shader_param);
 	ClassDB::bind_method(D_METHOD("property_can_revert", "name"), &ShaderMaterial::property_can_revert);
 	ClassDB::bind_method(D_METHOD("property_get_revert", "name"), &ShaderMaterial::property_get_revert);
+	ClassDB::bind_method(D_METHOD("set_shadow_pass", "shadow_pass"), &ShaderMaterial::set_shadow_pass);
+	ClassDB::bind_method(D_METHOD("get_shadow_pass"), &ShaderMaterial::get_shadow_pass);
 
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "shader", PROPERTY_HINT_RESOURCE_TYPE, "Shader"), "set_shader", "get_shader");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "shadow_pass", PROPERTY_HINT_RESOURCE_TYPE, "Material"), "set_shadow_pass", "get_shadow_pass");
+
 }
 
 void ShaderMaterial::get_argument_options(const StringName &p_function, int p_idx, List<String> *r_options) const {

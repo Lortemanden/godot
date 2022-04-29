@@ -134,6 +134,7 @@ struct Material {
 	int32_t priority = 0;
 	RID next_pass;
 	SelfList<Material> update_element;
+	RID shadow_pass;
 
 	RendererStorage::Dependency dependency;
 
@@ -356,6 +357,7 @@ public:
 
 	virtual void material_set_next_pass(RID p_material, RID p_next_material) override;
 	virtual void material_set_render_priority(RID p_material, int priority) override;
+	virtual void material_set_shadow_pass(RID p_material, RID p_shadow_material) override;
 
 	virtual bool material_is_animated(RID p_material) override;
 	virtual bool material_casts_shadows(RID p_material) override;

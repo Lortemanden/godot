@@ -208,6 +208,9 @@ public:
 
 	virtual void material_set_next_pass(RID p_material, RID p_next_material) = 0;
 
+	virtual void material_set_shadow_pass(RID p_material, RID p_shadow_material) = 0;
+	
+
 	/* MESH API */
 
 	enum ArrayType {

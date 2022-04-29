@@ -442,6 +442,10 @@ void SceneShaderForwardMobile::MaterialData::set_next_pass(RID p_pass) {
 	next_pass = p_pass;
 }
 
+void SceneShaderForwardMobile::MaterialData::set_shadow_pass(RID p_pass) {
+	shadow_pass = p_pass;
+}
+
 bool SceneShaderForwardMobile::MaterialData::update_parameters(const Map<StringName, Variant> &p_parameters, bool p_uniform_dirty, bool p_textures_dirty) {
 	SceneShaderForwardMobile *shader_singleton = (SceneShaderForwardMobile *)SceneShaderForwardMobile::singleton;
 

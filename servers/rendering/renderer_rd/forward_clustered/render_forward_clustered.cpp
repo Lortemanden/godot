@@ -2668,18 +2668,22 @@ void RenderForwardClustered::_geometry_instance_add_surface_with_material(Geomet
 
 	SceneShaderForwardClustered::MaterialData *material_shadow = nullptr;
 	void *surface_shadow = nullptr;
-	if (!p_material->shader_data->uses_particle_trails && !p_material->shader_data->writes_modelview_or_projection && !p_material->shader_data->uses_vertex && !p_material->shader_data->uses_position && !p_material->shader_data->uses_discard && !p_material->shader_data->uses_depth_pre_pass && !p_material->shader_data->uses_alpha_clip && p_material->shader_data->cull_mode == SceneShaderForwardClustered::ShaderData::CULL_BACK) {
-		flags |= GeometryInstanceSurfaceDataCache::FLAG_USES_SHARED_SHADOW_MATERIAL;
-		material_shadow = static_cast<SceneShaderForwardClustered::MaterialData *>(RendererRD::MaterialStorage::get_singleton()->material_get_data(scene_shader.default_material, RendererRD::SHADER_TYPE_3D));
 
-		RID shadow_mesh = mesh_storage->mesh_get_shadow_mesh(p_mesh);
+	RID shadow_pass = p_material->shadow_pass;
+	material_shadow = static_cast<SceneShaderForwardClustered::MaterialData *>(RendererRD::MaterialStorage::get_singleton()->material_get_data(shadow_pass, RendererRD::SHADER_TYPE_3D));
+	if (!material_shadow || !material_shadow->shader_data->valid) {
+		if (!p_material->shader_data->uses_particle_trails && !p_material->shader_data->writes_modelview_or_projection && !p_material->shader_data->uses_vertex && !p_material->shader_data->uses_position && !p_material->shader_data->uses_discard && !p_material->shader_data->uses_depth_pre_pass && !p_material->shader_data->uses_alpha_clip && p_material->shader_data->cull_mode == SceneShaderForwardClustered::ShaderData::CULL_BACK) {
+			flags |= GeometryInstanceSurfaceDataCache::FLAG_USES_SHARED_SHADOW_MATERIAL;
+			material_shadow = static_cast<SceneShaderForwardClustered::MaterialData *>(RendererRD::MaterialStorage::get_singleton()->material_get_data(scene_shader.default_material, RendererRD::SHADER_TYPE_3D));
 
-		if (shadow_mesh.is_valid()) {
-			surface_shadow = mesh_storage->mesh_get_surface(shadow_mesh, p_surface);
+			RID shadow_mesh = mesh_storage->mesh_get_shadow_mesh(p_mesh);
+
+			if (shadow_mesh.is_valid()) {
+				surface_shadow = mesh_storage->mesh_get_surface(shadow_mesh, p_surface);
+			}
+		} else {
+			material_shadow = p_material;
 		}
-
-	} else {
-		material_shadow = p_material;
 	}
 
 	GeometryInstanceSurfaceDataCache *sdcache = geometry_instance_surface_alloc.alloc();
@@ -2737,6 +2741,10 @@ void RenderForwardClustered::_geometry_instance_add_surface_with_material_chain(
 		}
 		if (ginstance->data->dirty_dependencies) {
 			material_storage->material_update_dependency(next_pass, &ginstance->data->dependency_tracker);
+
+			if(static_cast<SceneShaderForwardClustered::MaterialData *>(material_storage->material_get_data(material->shadow_pass, RendererRD::SHADER_TYPE_3D))){
+				material_storage->material_update_dependency(material->shadow_pass, &ginstance->data->dependency_tracker);
+			}
 		}
 		_geometry_instance_add_surface_with_material(ginstance, p_surface, material, next_pass.get_local_index(), material_storage->material_get_shader_id(next_pass), p_mesh);
 	}
@@ -2760,6 +2768,10 @@ void RenderForwardClustered::_geometry_instance_add_surface(GeometryInstanceForw
 	if (material) {
 		if (ginstance->data->dirty_dependencies) {
 			material_storage->material_update_dependency(m_src, &ginstance->data->dependency_tracker);
+
+			if(static_cast<SceneShaderForwardClustered::MaterialData *>(material_storage->material_get_data(material->shadow_pass, RendererRD::SHADER_TYPE_3D))){
+				material_storage->material_update_dependency(material->shadow_pass, &ginstance->data->dependency_tracker);
+			}
 		}
 	} else {
 		material = static_cast<SceneShaderForwardClustered::MaterialData *>(material_storage->material_get_data(scene_shader.default_material, RendererRD::SHADER_TYPE_3D));
