@@ -2294,6 +2294,11 @@ void RasterizerStorageGLES3::_update_shader(Shader *p_shader) const {
 			break; // Can't happen, but silences warning
 	}
 
+	//TODO: track stuff here
+	//TODO: make sure we cache stuff that runs through this function
+	shaders.tracker->add_shader(p_shader->mode, "SOME SHADER PATH", actions);
+	//TODO: it would appear p_shader->path is unused. Can we recycle that?
+
 	Error err = shaders.compiler.compile(p_shader->mode, p_shader->code, actions, p_shader->path, gen_code);
 	if (err != OK) {
 		return;
@@ -8169,6 +8174,8 @@ void RasterizerStorageGLES3::initialize() {
 
 	shaders.compile_queue = nullptr;
 	shaders.cache = nullptr;
+	//TODO: We can disable this when we don't need the tracker
+	shaders.tracker = memnew(ShaderTrackerGLES3);
 	shaders.cache_write_queue = nullptr;
 	bool effectively_on = false;
 	if (config.async_compilation_enabled) {
@@ -8449,6 +8456,9 @@ RasterizerStorageGLES3::RasterizerStorageGLES3() {
 RasterizerStorageGLES3::~RasterizerStorageGLES3() {
 	if (shaders.cache) {
 		memdelete(shaders.cache);
+	}
+	if (shaders.tracker) {
+		memdelete(shaders.tracker);
 	}
 	if (shaders.cache_write_queue) {
 		memdelete(shaders.cache_write_queue);

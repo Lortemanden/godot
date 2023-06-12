@@ -38,6 +38,7 @@
 #include "shader_cache_gles3.h"
 #include "shader_compiler_gles3.h"
 #include "shader_gles3.h"
+#include "shader_tracker_gles3.h"
 
 #include "shaders/blend_shape.glsl.gen.h"
 #include "shaders/canvas.glsl.gen.h"
@@ -123,6 +124,7 @@ public:
 
 		ShaderCompilerGLES3 compiler;
 		ShaderCacheGLES3 *cache;
+		ShaderTrackerGLES3 *tracker;
 		ThreadedCallableQueue<GLuint> *cache_write_queue;
 		ThreadedCallableQueue<GLuint> *compile_queue;
 

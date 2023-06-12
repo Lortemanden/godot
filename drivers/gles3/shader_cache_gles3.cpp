@@ -41,6 +41,10 @@ String ShaderCacheGLES3::hash_program(const char *const *p_strings_platform, con
 	CryptoCore::SHA256Context ctx;
 	ctx.start();
 
+	//platform strings describes the gpu and driver
+	//vertex string is the vertex code.
+	//fragment strings is the fragment code.
+
 	// GL may already reject a binary program if hardware/software has changed, but just in case
 	for (const char *const *s = p_strings_platform; *s; s++) {
 		uint8_t *bytes = reinterpret_cast<uint8_t *>(const_cast<char *>(*s));
@@ -59,6 +63,8 @@ String ShaderCacheGLES3::hash_program(const char *const *p_strings_platform, con
 }
 
 bool ShaderCacheGLES3::retrieve(const String &p_program_hash, uint32_t *r_format, PoolByteArray *r_data) {
+	print_line("shader cache retrieve");
+
 	if (!storage_da) {
 		return false;
 	}
