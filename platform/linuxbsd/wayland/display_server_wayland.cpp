@@ -43,9 +43,15 @@
 #include "servers/rendering/renderer_rd/renderer_compositor_rd.h"
 #endif
 
-#ifdef GLES3_ENABLED
+#if defined(GLES3_ENABLED) || defined(GLES2_ENABLED)
 #include "detect_prime_egl.h"
+
+#ifdef GLES3_ENABLED
 #include "drivers/gles3/rasterizer_gles3.h"
+#endif
+#ifdef GLES2_ENABLED
+#include "drivers/gles2/rasterizer_gles2.h"
+#endif
 #endif
 
 String DisplayServerWayland::_get_app_id_from_context(Context p_context) {
@@ -105,7 +111,7 @@ void DisplayServerWayland::_resize_window(const Size2i &p_size) {
 	}
 #endif
 
-#ifdef GLES3_ENABLED
+#if defined(GLES3_ENABLED) || defined(GLES2_ENABLED)
 	if (wd.visible && egl_manager) {
 		wl_egl_window_resize(wd.wl_egl_window, wd.rect.size.width, wd.rect.size.height, 0, 0);
 	}
@@ -167,13 +173,13 @@ void DisplayServerWayland::_show_window() {
 		}
 #endif
 
-#ifdef GLES3_ENABLED
+#if defined(GLES3_ENABLED) || defined(GLES2_ENABLED)
 		if (egl_manager) {
 			struct wl_surface *wl_surface = wayland_thread.window_get_wl_surface(wd.id);
 			wd.wl_egl_window = wl_egl_window_create(wl_surface, wd.rect.size.width, wd.rect.size.height);
 
 			Error err = egl_manager->window_create(MAIN_WINDOW_ID, wayland_thread.get_wl_display(), wd.wl_egl_window, wd.rect.size.width, wd.rect.size.height);
-			ERR_FAIL_COND_MSG(err == ERR_CANT_CREATE, "Can't show a GLES3 window.");
+			ERR_FAIL_COND_MSG(err == ERR_CANT_CREATE, "Can't show a GLES window.");
 
 			window_set_vsync_mode(wd.vsync_mode, MAIN_WINDOW_ID);
 		}
@@ -599,7 +605,7 @@ int64_t DisplayServerWayland::window_get_native_handle(HandleType p_handle_type,
 			return 0; // Not supported.
 		} break;
 
-#ifdef GLES3_ENABLED
+#if defined(GLES3_ENABLED) || defined(GLES2_ENABLED)
 		case OPENGL_CONTEXT: {
 			if (egl_manager) {
 				return (int64_t)egl_manager->get_context(p_window);
@@ -733,7 +739,7 @@ Size2i DisplayServerWayland::window_get_max_size(DisplayServer::WindowID p_windo
 }
 
 void DisplayServerWayland::gl_window_make_current(DisplayServer::WindowID p_window_id) {
-#ifdef GLES3_ENABLED
+#if defined(GLES3_ENABLED) || defined(GLES2_ENABLED)
 	if (egl_manager) {
 		egl_manager->window_make_current(MAIN_WINDOW_ID);
 	}
@@ -904,7 +910,7 @@ void DisplayServerWayland::window_set_vsync_mode(DisplayServer::VSyncMode p_vsyn
 	}
 #endif // VULKAN_ENABLED
 
-#ifdef GLES3_ENABLED
+#if defined(GLES3_ENABLED) || defined(GLES2_ENABLED)
 	if (egl_manager) {
 		egl_manager->set_use_vsync(p_vsync_mode != DisplayServer::VSYNC_DISABLED);
 
@@ -929,7 +935,7 @@ DisplayServer::VSyncMode DisplayServerWayland::window_get_vsync_mode(DisplayServ
 	}
 #endif // VULKAN_ENABLED
 
-#ifdef GLES3_ENABLED
+#if defined(GLES3_ENABLED) || defined(GLES2_ENABLED)
 	if (egl_manager) {
 		return egl_manager->is_using_vsync() ? DisplayServer::VSYNC_ENABLED : DisplayServer::VSYNC_DISABLED;
 	}
@@ -1149,7 +1155,7 @@ void DisplayServerWayland::process_events() {
 }
 
 void DisplayServerWayland::release_rendering_thread() {
-#ifdef GLES3_ENABLED
+#if defined(GLES3_ENABLED) || defined(GLES2_ENABLED)
 	if (egl_manager) {
 		egl_manager->release_current();
 	}
@@ -1157,7 +1163,7 @@ void DisplayServerWayland::release_rendering_thread() {
 }
 
 void DisplayServerWayland::make_rendering_thread() {
-#ifdef GLES3_ENABLED
+#if defined(GLES3_ENABLED) || defined(GLES2_ENABLED)
 	if (egl_manager) {
 		egl_manager->make_current();
 	}
@@ -1165,7 +1171,7 @@ void DisplayServerWayland::make_rendering_thread() {
 }
 
 void DisplayServerWayland::swap_buffers() {
-#ifdef GLES3_ENABLED
+#if defined(GLES3_ENABLED) || defined(GLES2_ENABLED)
 	if (egl_manager) {
 		egl_manager->swap_buffers();
 	}
@@ -1190,6 +1196,9 @@ Vector<String> DisplayServerWayland::get_rendering_drivers_func() {
 	drivers.push_back("vulkan");
 #endif
 
+#ifdef GLES2_ENABLED
+	drivers.push_back("opengl2");
+#endif
 #ifdef GLES3_ENABLED
 	drivers.push_back("opengl3");
 #endif
@@ -1209,7 +1218,7 @@ DisplayServer *DisplayServerWayland::create_func(const String &p_rendering_drive
 }
 
 DisplayServerWayland::DisplayServerWayland(const String &p_rendering_driver, WindowMode p_mode, VSyncMode p_vsync_mode, uint32_t p_flags, const Vector2i &p_resolution, Error &r_error) {
-#ifdef GLES3_ENABLED
+#if defined(GLES3_ENABLED) || defined(GLES2_ENABLED)
 #ifdef SOWRAP_ENABLED
 #ifdef DEBUG_ENABLED
 	int dylibloader_verbose = 1;
@@ -1217,7 +1226,7 @@ DisplayServerWayland::DisplayServerWayland(const String &p_rendering_driver, Win
 	int dylibloader_verbose = 0;
 #endif // DEBUG_ENABLED
 #endif // SOWRAP_ENABLED
-#endif // GLES3_ENABLED
+#endif // GLES3_ENABLED || GLES2_ENABLED
 
 	r_error = ERR_UNAVAILABLE;
 
@@ -1290,7 +1299,7 @@ DisplayServerWayland::DisplayServerWayland(const String &p_rendering_driver, Win
 
 			if (prime_idx == -1) {
 				print_verbose("Detecting GPUs, set DRI_PRIME in the environment to override GPU detection logic.");
-				prime_idx = DetectPrimeEGL::detect_prime();
+				prime_idx = DetectPrimeEGL::detect_prime(true);
 			}
 
 			if (prime_idx) {
@@ -1319,6 +1328,70 @@ DisplayServerWayland::DisplayServerWayland(const String &p_rendering_driver, Win
 		RasterizerGLES3::make_current(true);
 	}
 #endif // GLES3_ENABLED
+
+#ifdef GLES2_ENABLED
+	if (p_rendering_driver == "opengl2") {
+		if (getenv("DRI_PRIME") == nullptr) {
+			int prime_idx = -1;
+
+			if (getenv("PRIMUS_DISPLAY") ||
+					getenv("PRIMUS_libGLd") ||
+					getenv("PRIMUS_libGLa") ||
+					getenv("PRIMUS_libGL") ||
+					getenv("PRIMUS_LOAD_GLOBAL") ||
+					getenv("BUMBLEBEE_SOCKET") ||
+					getenv("__NV_PRIME_RENDER_OFFLOAD")) {
+				print_verbose("Optirun/primusrun detected. Skipping GPU detection");
+				prime_idx = 0;
+			}
+
+			// Some tools use fake libGL libraries and have them override the real one using
+			// LD_LIBRARY_PATH, so we skip them. *But* Steam also sets LD_LIBRARY_PATH for its
+			// runtime and includes system `/lib` and `/lib64`... so ignore Steam.
+			if (prime_idx == -1 && getenv("LD_LIBRARY_PATH") && !getenv("STEAM_RUNTIME_LIBRARY_PATH")) {
+				String ld_library_path(getenv("LD_LIBRARY_PATH"));
+				Vector<String> libraries = ld_library_path.split(":");
+
+				for (int i = 0; i < libraries.size(); ++i) {
+					if (FileAccess::exists(libraries[i] + "/libGL.so.1") ||
+							FileAccess::exists(libraries[i] + "/libGL.so")) {
+						print_verbose("Custom libGL override detected. Skipping GPU detection");
+						prime_idx = 0;
+					}
+				}
+			}
+
+			if (prime_idx == -1) {
+				print_verbose("Detecting GPUs, set DRI_PRIME in the environment to override GPU detection logic.");
+				prime_idx = DetectPrimeEGL::detect_prime(false);
+			}
+
+			if (prime_idx) {
+				print_line(vformat("Found discrete GPU, setting DRI_PRIME=%d to use it.", prime_idx));
+				print_line("Note: Set DRI_PRIME=0 in the environment to disable Godot from using the discrete GPU.");
+				setenv("DRI_PRIME", itos(prime_idx).utf8().ptr(), 1);
+			}
+		}
+
+		egl_manager = memnew(EGLManagerWayland(false));
+
+#ifdef SOWRAP_ENABLED
+		if (initialize_wayland_egl(dylibloader_verbose) != 0) {
+			WARN_PRINT("Can't load the Wayland EGL library.");
+			return;
+		}
+#endif // SOWRAP_ENABLED
+
+		if (egl_manager->initialize() != OK) {
+			memdelete(egl_manager);
+			egl_manager = nullptr;
+			r_error = ERR_CANT_CREATE;
+			ERR_FAIL_MSG("Could not initialize GLES2.");
+		}
+
+		RasterizerGLES2::make_current(true);
+	}
+#endif // GLES2_ENABLED
 
 	cursor_set_shape(CURSOR_BUSY);
 
@@ -1366,14 +1439,15 @@ DisplayServerWayland::~DisplayServerWayland() {
 		}
 #endif
 
-#ifdef GLES3_ENABLED
+#if defined(GLES3_ENABLED) || defined(GLES2_ENABLED)
 		if (egl_manager) {
 			egl_manager->window_destroy(MAIN_WINDOW_ID);
 		}
 #endif
 	}
 
-#ifdef GLES3_ENABLED
+#ifdef #if defined(GLES3_ENABLED) || defined(GLES2_ENABLED)
+
 	if (main_window.wl_egl_window) {
 		wl_egl_window_destroy(main_window.wl_egl_window);
 	}

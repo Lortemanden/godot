@@ -44,7 +44,7 @@
 
 #endif //RD_ENABLED
 
-#ifdef GLES3_ENABLED
+#if defined(GLES3_ENABLED) || defined(GLES2_ENABLED)
 #include "wayland/egl_manager_wayland.h"
 #endif
 
@@ -77,7 +77,7 @@ class DisplayServerWayland : public DisplayServer {
 
 		Rect2i safe_rect;
 
-#ifdef GLES3_ENABLED
+#if defined(GLES3_ENABLED) || defined(GLES2_ENABLED)
 		struct wl_egl_window *wl_egl_window = nullptr;
 #endif
 
@@ -125,7 +125,7 @@ class DisplayServerWayland : public DisplayServer {
 	RenderingDevice *rendering_device = nullptr;
 #endif
 
-#ifdef GLES3_ENABLED
+#if defined(GLES3_ENABLED) || defined(GLES2_ENABLED)
 	EGLManagerWayland *egl_manager = nullptr;
 #endif
 

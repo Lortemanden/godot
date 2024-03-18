@@ -11,10 +11,11 @@ from typing import Optional
 from platform_methods import subprocess_main
 
 
-class GLES3HeaderStruct:
+class GLESHeaderStruct:
     def __init__(self):
         self.vertex_lines = []
         self.fragment_lines = []
+        self.attributes = []
         self.uniforms = []
         self.fbos = []
         self.texunits = []
@@ -36,7 +37,7 @@ class GLES3HeaderStruct:
         self.specialization_values = []
 
 
-def include_file_in_gles3_header(filename: str, header_data: GLES3HeaderStruct, depth: int):
+def include_file_in_gles_header(filename: str, header_data: GLESHeaderStruct, depth: int):
     fs = open(filename, "r")
     line = fs.readline()
 
@@ -96,14 +97,18 @@ def include_file_in_gles3_header(filename: str, header_data: GLES3HeaderStruct, 
         while line.find("#include ") != -1:
             includeline = line.replace("#include ", "").strip()[1:-1]
 
-            included_file = os.path.relpath(os.path.dirname(filename) + "/" + includeline)
+            dir = os.path.dirname(filename)
+            if dir == "":
+                dir = "."
+
+            included_file = os.path.relpath(dir + "/" + includeline)
             if not included_file in header_data.vertex_included_files and header_data.reading == "vertex":
                 header_data.vertex_included_files += [included_file]
-                if include_file_in_gles3_header(included_file, header_data, depth + 1) is None:
+                if include_file_in_gles_header(included_file, header_data, depth + 1) is None:
                     print("Error in file '" + filename + "': #include " + includeline + "could not be found!")
             elif not included_file in header_data.fragment_included_files and header_data.reading == "fragment":
                 header_data.fragment_included_files += [included_file]
-                if include_file_in_gles3_header(included_file, header_data, depth + 1) is None:
+                if include_file_in_gles_header(included_file, header_data, depth + 1) is None:
                     print("Error in file '" + filename + "': #include " + includeline + "could not be found!")
 
             line = fs.readline()
@@ -166,6 +171,20 @@ def include_file_in_gles3_header(filename: str, header_data: GLES3HeaderStruct, 
                 if not x in header_data.uniforms:
                     header_data.uniforms += [x]
 
+        if line.strip().find("attribute ") == 0 and line.find("attrib:") != -1:
+            uline = line.replace("in ", "")
+            uline = uline.replace("attribute ", "")
+            uline = uline.replace("highp ", "")
+            uline = uline.replace(";", "")
+            uline = uline[uline.find(" ") :].strip()
+
+            if uline.find("//") != -1:
+                name, bind = uline.split("//")
+                if bind.find("attrib:") != -1:
+                    name = name.strip()
+                    bind = bind.replace("attrib:", "").strip()
+                    header_data.attributes += [(name, bind)]
+
         if (line.strip().find("out ") == 0 or line.strip().find("flat ") == 0) and line.find("tfb:") != -1:
             uline = line.replace("flat ", "")
             uline = uline.replace("out ", "")
@@ -196,15 +215,16 @@ def include_file_in_gles3_header(filename: str, header_data: GLES3HeaderStruct, 
     return header_data
 
 
-def build_gles3_header(
+def build_gles_header(
     filename: str,
     include: str,
     class_suffix: str,
-    optional_output_filename: Optional[str] = None,
-    header_data: Optional[GLES3HeaderStruct] = None,
+    optional_output_filename: str = None,
+    header_data: Optional[GLESHeaderStruct] = None,
+    gles_version: int = 3
 ):
-    header_data = header_data or GLES3HeaderStruct()
-    include_file_in_gles3_header(filename, header_data, 0)
+    header_data = header_data or GLESHeaderStruct()
+    include_file_in_gles_header(filename, header_data, 0)
 
     if optional_output_filename is None:
         out_file = filename + ".gen.h"
@@ -221,8 +241,8 @@ def build_gles3_header(
     out_file_base = out_file_base[out_file_base.rfind("/") + 1 :]
     out_file_base = out_file_base[out_file_base.rfind("\\") + 1 :]
     out_file_ifdef = out_file_base.replace(".", "_").upper()
-    fd.write("#ifndef " + out_file_ifdef + class_suffix + "_GLES3\n")
-    fd.write("#define " + out_file_ifdef + class_suffix + "_GLES3\n")
+    fd.write("#ifndef " + out_file_ifdef + class_suffix + "_GLES" + str(gles_version) + "\n")
+    fd.write("#define " + out_file_ifdef + class_suffix + "_GLES" + str(gles_version) + "\n")
 
     out_file_class = (
         out_file_base.replace(".glsl.gen.h", "").title().replace("_", "").replace(".", "") + "Shader" + class_suffix
@@ -295,13 +315,14 @@ def build_gles3_header(
             + str(defspec)
             + ") { _FU glUniform1f(version_get_uniform(p_uniform,p_version,p_variant,p_specialization),p_value); }\n\n"
         )
-        fd.write(
-            "\t_FORCE_INLINE_ void version_set_uniform(Uniforms p_uniform, uint8_t p_value,RID p_version,ShaderVariant p_variant"
-            + defvariant
-            + ",uint64_t p_specialization="
-            + str(defspec)
-            + ") { _FU glUniform1ui(version_get_uniform(p_uniform,p_version,p_variant,p_specialization),p_value); }\n\n"
-        )
+        if gles_version >= 3:
+            fd.write(
+                "\t_FORCE_INLINE_ void version_set_uniform(Uniforms p_uniform, uint8_t p_value,RID p_version,ShaderVariant p_variant"
+                + defvariant
+                + ",uint64_t p_specialization="
+                + str(defspec)
+                + ") { _FU glUniform1ui(version_get_uniform(p_uniform,p_version,p_variant,p_specialization),p_value); }\n\n"
+            )
         fd.write(
             "\t_FORCE_INLINE_ void version_set_uniform(Uniforms p_uniform, int8_t p_value,RID p_version,ShaderVariant p_variant"
             + defvariant
@@ -309,13 +330,14 @@ def build_gles3_header(
             + str(defspec)
             + ") { _FU glUniform1i(version_get_uniform(p_uniform,p_version,p_variant,p_specialization),p_value); }\n\n"
         )
-        fd.write(
-            "\t_FORCE_INLINE_ void version_set_uniform(Uniforms p_uniform, uint16_t p_value,RID p_version,ShaderVariant p_variant"
-            + defvariant
-            + ",uint64_t p_specialization="
-            + str(defspec)
-            + ") { _FU glUniform1ui(version_get_uniform(p_uniform,p_version,p_variant,p_specialization),p_value); }\n\n"
-        )
+        if gles_version >= 3:
+            fd.write(
+                "\t_FORCE_INLINE_ void version_set_uniform(Uniforms p_uniform, uint16_t p_value,RID p_version,ShaderVariant p_variant"
+                + defvariant
+                + ",uint64_t p_specialization="
+                + str(defspec)
+                + ") { _FU glUniform1ui(version_get_uniform(p_uniform,p_version,p_variant,p_specialization),p_value); }\n\n"
+            )
         fd.write(
             "\t_FORCE_INLINE_ void version_set_uniform(Uniforms p_uniform, int16_t p_value,RID p_version,ShaderVariant p_variant"
             + defvariant
@@ -323,13 +345,14 @@ def build_gles3_header(
             + str(defspec)
             + ") { _FU glUniform1i(version_get_uniform(p_uniform,p_version,p_variant,p_specialization),p_value); }\n\n"
         )
-        fd.write(
-            "\t_FORCE_INLINE_ void version_set_uniform(Uniforms p_uniform, uint32_t p_value,RID p_version,ShaderVariant p_variant"
-            + defvariant
-            + ",uint64_t p_specialization="
-            + str(defspec)
-            + ") { _FU glUniform1ui(version_get_uniform(p_uniform,p_version,p_variant,p_specialization),p_value); }\n\n"
-        )
+        if gles_version >= 3:
+            fd.write(
+                "\t_FORCE_INLINE_ void version_set_uniform(Uniforms p_uniform, uint32_t p_value,RID p_version,ShaderVariant p_variant"
+                + defvariant
+                + ",uint64_t p_specialization="
+                + str(defspec)
+                + ") { _FU glUniform1ui(version_get_uniform(p_uniform,p_version,p_variant,p_specialization),p_value); }\n\n"
+            )
         fd.write(
             "\t_FORCE_INLINE_ void version_set_uniform(Uniforms p_uniform, int32_t p_value,RID p_version,ShaderVariant p_variant"
             + defvariant
@@ -516,7 +539,7 @@ def build_gles3_header(
     else:
         fd.write("\t\tstatic TexUnitPair *_texunit_pairs=nullptr;\n")
 
-    if header_data.ubos:
+    if header_data.ubos and gles_version >= 3:
         fd.write("\t\tstatic UBOPair _ubo_pairs[]={\n")
         for x in header_data.ubos:
             fd.write('\t\t\t{"' + x[0] + '",' + x[1] + "},\n")
@@ -541,9 +564,17 @@ def build_gles3_header(
     else:
         fd.write("\t\tstatic Specialization *_spec_pairs=nullptr;\n")
 
-    feedback_count = 0
+    if gles_version <= 2:
+        if header_data.attributes:
+            fd.write("\t\tstatic AttributePair _attribute_pairs[]={\n")
+            for x in header_data.attributes:
+                fd.write('\t\t\t{"' + x[0] + '",' + x[1] + "},\n")
+            fd.write("\t\t};\n\n")
+        else:
+            fd.write("\t\tstatic AttributePair *_attribute_pairs=nullptr;\n")
 
-    if header_data.feedbacks:
+    feedback_count = 0
+    if header_data.feedbacks and gles_version >= 3:
         fd.write("\t\tstatic const Feedback _feedbacks[]={\n")
         for x in header_data.feedbacks:
             name = x[0]
@@ -575,23 +606,40 @@ def build_gles3_header(
         fd.write(str(ord("\n")) + ",")
     fd.write("\t\t0};\n\n")
 
-    fd.write(
-        '\t\t_setup(_vertex_code,_fragment_code,"'
-        + out_file_class
-        + '",'
-        + str(len(header_data.uniforms))
-        + ",_uniform_strings,"
-        + str(len(header_data.ubos))
-        + ",_ubo_pairs,"
-        + str(feedback_count)
-        + ",_feedbacks,"
-        + str(len(header_data.texunits))
-        + ",_texunit_pairs,"
-        + str(len(header_data.specialization_names))
-        + ",_spec_pairs,"
-        + str(variant_count)
-        + ",_variant_defines);\n"
-    )
+    if gles_version >= 3:
+        fd.write(
+            '\t\t_setup(_vertex_code,_fragment_code,"'
+            + out_file_class
+            + '",'
+            + str(len(header_data.uniforms))
+            + ",_uniform_strings,"
+            + str(len(header_data.ubos))
+            + ",_ubo_pairs,"
+            + str(feedback_count)
+            + ",_feedbacks,"
+            + str(len(header_data.texunits))
+            + ",_texunit_pairs,"
+            + str(len(header_data.specialization_names))
+            + ",_spec_pairs,"
+            + str(variant_count)
+            + ",_variant_defines);\n"
+        )
+    else:
+        fd.write(
+            '\t\t_setup(_vertex_code,_fragment_code,"'
+            + out_file_class
+            + '",'
+            + str(len(header_data.uniforms))
+            + ",_uniform_strings,"
+            + str(len(header_data.attributes))
+            + ",_attribute_pairs,"
+            + str(len(header_data.texunits))
+            + ",_texunit_pairs,"
+            + str(len(header_data.specialization_names))
+            + ",_spec_pairs,"
+            + str(variant_count)
+            + ",_variant_defines);\n"
+        )
 
     fd.write("\t}\n\n")
 
@@ -601,8 +649,16 @@ def build_gles3_header(
 
 
 def build_gles3_headers(target, source, env):
+    print("in build_gles3_headers!")
     for x in source:
-        build_gles3_header(str(x), include="drivers/gles3/shader_gles3.h", class_suffix="GLES3")
+        build_gles_header(str(x), include="drivers/gles3/shader_gles3.h", class_suffix="GLES3")
+
+def build_gles2_headers(target, source, env):
+    print("in build_gles2_headers!")
+    print(str(source)+":")
+    for x in source:
+        print("\t"+str(x))
+        build_gles_header(str(x), include="drivers/gles2/shader_gles2.h", class_suffix="GLES2", gles_version = 2)
 
 
 if __name__ == "__main__":

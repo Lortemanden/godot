@@ -42,7 +42,7 @@ def _helper_module(name, path):
         setattr(parent_module, child_name, child_module)
 
 
-_helper_module("gles3_builders", "gles3_builders.py")
+_helper_module("gles_builders", "gles_builders.py")
 _helper_module("glsl_builders", "glsl_builders.py")
 _helper_module("methods", "methods.py")
 _helper_module("platform_methods", "platform_methods.py")
@@ -54,7 +54,7 @@ _helper_module("modules.modules_builders", "modules/modules_builders.py")
 # Local
 import methods
 import glsl_builders
-import gles3_builders
+import gles_builders
 import scu_builders
 from platform_methods import architectures, architecture_aliases, generate_export_icons
 
@@ -192,6 +192,7 @@ opts.Add(BoolVariable("brotli", "Enable Brotli for decompresson and WOFF2 fonts 
 opts.Add(BoolVariable("xaudio2", "Enable the XAudio2 audio driver", False))
 opts.Add(BoolVariable("vulkan", "Enable the vulkan rendering driver", True))
 opts.Add(BoolVariable("opengl3", "Enable the OpenGL/GLES3 rendering driver", True))
+opts.Add(BoolVariable("opengl2", "Enable the OpenGL/GLES2 rendering driver", True))
 opts.Add(BoolVariable("d3d12", "Enable the Direct3D 12 rendering driver (Windows only)", False))
 opts.Add(BoolVariable("openxr", "Enable the OpenXR driver", True))
 opts.Add(BoolVariable("use_volk", "Use the volk library to load the Vulkan loader dynamically", True))
@@ -939,8 +940,13 @@ if selected_platform in platform_list:
             suffix="glsl.gen.h",
             src_suffix=".glsl",
         ),
+        "GLES2_GLSL": env.Builder(
+            action=env.Run(gles_builders.build_gles2_headers, 'Building GLES2 GLSL header: "$TARGET"'),
+            suffix="glsl.gen.h",
+            src_suffix=".glsl",
+        ),
         "GLES3_GLSL": env.Builder(
-            action=env.Run(gles3_builders.build_gles3_headers),
+            action=env.Run(gles_builders.build_gles3_headers, 'Building GLES3 GLSL header: "$TARGET"'),
             suffix="glsl.gen.h",
             src_suffix=".glsl",
         ),

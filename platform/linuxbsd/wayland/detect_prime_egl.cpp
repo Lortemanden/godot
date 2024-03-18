@@ -28,7 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifdef GLES3_ENABLED
+#if defined(GLES3_ENABLED) || defined(GLES2_ENABLED)
 #ifdef EGL_ENABLED
 
 #include "detect_prime_egl.h"
@@ -57,7 +57,7 @@
 #undef glGetString
 
 // Runs inside a child. Exiting will not quit the engine.
-void DetectPrimeEGL::create_context() {
+void DetectPrimeEGL::create_context(bool p_gles3_enabled) {
 #if defined(GLAD_ENABLED)
 	if (!gladLoaderLoadEGL(nullptr)) {
 		print_verbose("Unable to load EGL, GPU detection skipped.");
@@ -95,9 +95,11 @@ void DetectPrimeEGL::create_context() {
 	EGLint config_count = 0;
 	eglChooseConfig(egl_display, attribs, &egl_config, 1, &config_count);
 
+	int context_profile = p_gles3_enabled ? EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT, EGL_CONTEXT_OPENGL_COMPATIBILITY_PROFILE_BIT;
 	EGLint context_attribs[] = {
 		EGL_CONTEXT_MAJOR_VERSION, 3,
 		EGL_CONTEXT_MINOR_VERSION, 3,
+		EGL_CONTEXT_OPENGL_PROFILE_MASK, context_profile,
 		EGL_NONE
 	};
 
@@ -110,7 +112,7 @@ void DetectPrimeEGL::create_context() {
 	eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, egl_context);
 }
 
-int DetectPrimeEGL::detect_prime() {
+int DetectPrimeEGL::detect_prime(bool p_gles3_enabled) {
 	pid_t p;
 	int priorities[4] = {};
 	String vendors[4];
@@ -168,7 +170,7 @@ int DetectPrimeEGL::detect_prime() {
 
 			setenv("DRI_PRIME", itos(i).utf8().ptr(), 1);
 
-			create_context();
+			create_context(p_gles3_enabled);
 
 			PFNGLGETSTRINGPROC glGetString = (PFNGLGETSTRINGPROC)eglGetProcAddress("glGetString");
 			const char *vendor = (const char *)glGetString(GL_VENDOR);
@@ -228,4 +230,4 @@ int DetectPrimeEGL::detect_prime() {
 }
 
 #endif // EGL_ENABLED
-#endif // GLES3_ENABLED
+#endif // GLES3_ENABLED  || GLES2_ENABLED
