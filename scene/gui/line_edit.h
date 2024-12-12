@@ -207,9 +207,6 @@ private:
 		float base_scale = 1.0;
 	} theme_cache;
 
-	void _edit();
-	void _unedit();
-
 	void _close_ime_window();
 	void _update_ime_window_position();
 
@@ -251,6 +248,7 @@ private:
 	void _move_caret_end(bool p_select);
 	void _backspace(bool p_word = false, bool p_all_to_left = false);
 	void _delete(bool p_word = false, bool p_all_to_right = false);
+	void _texture_changed();
 
 protected:
 	bool _is_over_clear_button(const Point2 &p_pos) const;
@@ -265,6 +263,8 @@ protected:
 	virtual void gui_input(const Ref<InputEvent> &p_event) override;
 
 public:
+	void edit();
+	void unedit();
 	bool is_editing() const;
 
 	bool has_ime_text() const;

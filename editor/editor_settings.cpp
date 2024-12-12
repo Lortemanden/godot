@@ -221,7 +221,6 @@ bool EditorSettings::_get(const StringName &p_name, Variant &r_ret) const {
 
 	const VariantContainer *v = props.getptr(p_name);
 	if (!v) {
-		WARN_PRINT("EditorSettings::_get - Property not found: " + String(p_name));
 		return false;
 	}
 	r_ret = v->variant;
@@ -426,12 +425,17 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	EDITOR_SETTING_USAGE(Variant::INT, PROPERTY_HINT_ENUM, "interface/editor/display_scale", 0, display_scale_hint_string, PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED | PROPERTY_USAGE_EDITOR_BASIC_SETTING)
 	EDITOR_SETTING_USAGE(Variant::FLOAT, PROPERTY_HINT_RANGE, "interface/editor/custom_display_scale", 1.0, "0.5,3,0.01", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED | PROPERTY_USAGE_EDITOR_BASIC_SETTING)
 
-	String ed_screen_hints = "Screen With Mouse Pointer:-4,Screen With Keyboard Focus:-3,Primary Screen:-2"; // Note: Main Window Screen:-1 is not used for the main window.
+	String ed_screen_hints = "Auto (Remembers last position):-5,Screen With Mouse Pointer:-4,Screen With Keyboard Focus:-3,Primary Screen:-2";
 	for (int i = 0; i < DisplayServer::get_singleton()->get_screen_count(); i++) {
 		ed_screen_hints += ",Screen " + itos(i + 1) + ":" + itos(i);
 	}
-	EDITOR_SETTING(Variant::INT, PROPERTY_HINT_ENUM, "interface/editor/editor_screen", -2, ed_screen_hints)
-	EDITOR_SETTING(Variant::INT, PROPERTY_HINT_ENUM, "interface/editor/project_manager_screen", -2, ed_screen_hints)
+	EDITOR_SETTING(Variant::INT, PROPERTY_HINT_ENUM, "interface/editor/editor_screen", EditorSettings::InitialScreen::INITIAL_SCREEN_AUTO, ed_screen_hints)
+
+	String project_manager_screen_hints = "Screen With Mouse Pointer:-4,Screen With Keyboard Focus:-3,Primary Screen:-2";
+	for (int i = 0; i < DisplayServer::get_singleton()->get_screen_count(); i++) {
+		project_manager_screen_hints += ",Screen " + itos(i + 1) + ":" + itos(i);
+	}
+	EDITOR_SETTING(Variant::INT, PROPERTY_HINT_ENUM, "interface/editor/project_manager_screen", EditorSettings::InitialScreen::INITIAL_SCREEN_PRIMARY, project_manager_screen_hints)
 
 	{
 		EngineUpdateLabel::UpdateMode default_update_mode = EngineUpdateLabel::UpdateMode::NEWEST_UNSTABLE;
@@ -466,7 +470,6 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	_initial_set("interface/editor/separate_distraction_mode", false, true);
 	_initial_set("interface/editor/automatically_open_screenshots", true, true);
 	EDITOR_SETTING_USAGE(Variant::BOOL, PROPERTY_HINT_NONE, "interface/editor/single_window_mode", false, "", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED | PROPERTY_USAGE_EDITOR_BASIC_SETTING)
-	_initial_set("interface/editor/remember_window_size_and_position", true, true);
 	_initial_set("interface/editor/mouse_extra_buttons_navigate_history", true);
 	_initial_set("interface/editor/save_each_scene_on_quit", true, true); // Regression
 	EDITOR_SETTING_BASIC(Variant::BOOL, PROPERTY_HINT_NONE, "interface/editor/save_on_focus_loss", false, "")
@@ -598,6 +601,14 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	EDITOR_SETTING(Variant::INT, PROPERTY_HINT_ENUM, "filesystem/file_dialog/display_mode", 0, "Thumbnails,List")
 	EDITOR_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "filesystem/file_dialog/thumbnail_size", 64, "32,128,16")
 
+	// Quick Open dialog
+	EDITOR_SETTING_USAGE(Variant::INT, PROPERTY_HINT_RANGE, "filesystem/quick_open_dialog/max_results", 100, "0,10000,1", PROPERTY_USAGE_DEFAULT)
+	_initial_set("filesystem/quick_open_dialog/show_search_highlight", true);
+	_initial_set("filesystem/quick_open_dialog/enable_fuzzy_matching", true);
+	EDITOR_SETTING_USAGE(Variant::INT, PROPERTY_HINT_RANGE, "filesystem/quick_open_dialog/max_fuzzy_misses", 2, "0,10,1", PROPERTY_USAGE_DEFAULT)
+	_initial_set("filesystem/quick_open_dialog/include_addons", false);
+	EDITOR_SETTING(Variant::INT, PROPERTY_HINT_ENUM, "filesystem/quick_open_dialog/default_display_mode", 0, "Adaptive,Last Used")
+
 	// Import (for glft module)
 	EDITOR_SETTING_USAGE(Variant::STRING, PROPERTY_HINT_GLOBAL_FILE, "filesystem/import/blender/blender_path", "", "", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED | PROPERTY_USAGE_EDITOR_BASIC_SETTING)
 	EDITOR_SETTING_USAGE(Variant::INT, PROPERTY_HINT_RANGE, "filesystem/import/blender/rpc_port", 6011, "0,65535,1", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED)
@@ -704,6 +715,7 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	_initial_set("text_editor/script_list/sort_members_outline_alphabetically", false, true);
 	_initial_set("text_editor/script_list/script_temperature_enabled", true);
 	_initial_set("text_editor/script_list/script_temperature_history_size", 15);
+	_initial_set("text_editor/script_list/highlight_scene_scripts", true);
 	_initial_set("text_editor/script_list/group_help_pages", true);
 	EDITOR_SETTING(Variant::INT, PROPERTY_HINT_ENUM, "text_editor/script_list/sort_scripts_by", 0, "Name,Path,None");
 	EDITOR_SETTING(Variant::INT, PROPERTY_HINT_ENUM, "text_editor/script_list/list_script_names_as", 0, "Name,Parent Directory And Name,Full Path");
@@ -815,7 +827,8 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	_initial_set("editors/3d/navigation/warped_mouse_panning", true, true);
 
 	// 3D: Navigation feel
-	EDITOR_SETTING_BASIC(Variant::FLOAT, PROPERTY_HINT_RANGE, "editors/3d/navigation_feel/orbit_sensitivity", 0.25, "0.01,2,0.001")
+	EDITOR_SETTING(Variant::FLOAT, PROPERTY_HINT_RANGE, "editors/3d/navigation_feel/orbit_sensitivity", 0.25, "0.01,20,0.001")
+	EDITOR_SETTING(Variant::FLOAT, PROPERTY_HINT_RANGE, "editors/3d/navigation_feel/translation_sensitivity", 1.0, "0.01,20,0.001")
 	EDITOR_SETTING(Variant::FLOAT, PROPERTY_HINT_RANGE, "editors/3d/navigation_feel/orbit_inertia", 0.0, "0,1,0.001")
 	EDITOR_SETTING(Variant::FLOAT, PROPERTY_HINT_RANGE, "editors/3d/navigation_feel/translation_inertia", 0.05, "0,1,0.001")
 	EDITOR_SETTING(Variant::FLOAT, PROPERTY_HINT_RANGE, "editors/3d/navigation_feel/zoom_inertia", 0.05, "0,1,0.001")
@@ -958,6 +971,7 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	/* Debugger/profiler */
 
 	EDITOR_SETTING_BASIC(Variant::BOOL, PROPERTY_HINT_NONE, "debugger/auto_switch_to_remote_scene_tree", false, "")
+	EDITOR_SETTING_BASIC(Variant::BOOL, PROPERTY_HINT_NONE, "debugger/auto_switch_to_stack_trace", true, "")
 	EDITOR_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "debugger/profiler_frame_history_size", 3600, "60,10000,1")
 	EDITOR_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "debugger/profiler_frame_max_functions", 64, "16,512,1")
 	EDITOR_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "debugger/profiler_target_fps", 60, "1,1000,1")
@@ -1218,7 +1232,7 @@ fail:
 		extra_config->set_value("init_projects", "list", list);
 	}
 
-	singleton = Ref<EditorSettings>(memnew(EditorSettings));
+	singleton.instantiate();
 	singleton->set_path(config_file_path, true);
 	singleton->save_changed_setting = true;
 	singleton->_load_defaults(extra_config);
@@ -1417,24 +1431,20 @@ Variant _EDITOR_GET(const String &p_setting) {
 }
 
 bool EditorSettings::_property_can_revert(const StringName &p_name) const {
-	if (!props.has(p_name)) {
-		return false;
+	const VariantContainer *property = props.getptr(p_name);
+	if (property) {
+		return property->has_default_value;
 	}
-
-	if (!props[p_name].has_default_value) {
-		return false;
-	}
-
-	return props[p_name].initial != props[p_name].variant;
+	return false;
 }
 
 bool EditorSettings::_property_get_revert(const StringName &p_name, Variant &r_property) const {
-	if (!props.has(p_name) || !props[p_name].has_default_value) {
-		return false;
+	const VariantContainer *value = props.getptr(p_name);
+	if (value && value->has_default_value) {
+		r_property = value->initial;
+		return true;
 	}
-
-	r_property = props[p_name].initial;
-	return true;
+	return false;
 }
 
 void EditorSettings::add_property_hint(const PropertyInfo &p_hint) {
@@ -1489,8 +1499,24 @@ void EditorSettings::set_favorites(const Vector<String> &p_favorites) {
 	}
 }
 
+void EditorSettings::set_favorite_properties(const HashMap<String, PackedStringArray> &p_favorite_properties) {
+	favorite_properties = p_favorite_properties;
+	String favorite_properties_file = EditorPaths::get_singleton()->get_project_settings_dir().path_join("favorite_properties");
+
+	Ref<ConfigFile> cf;
+	cf.instantiate();
+	for (const KeyValue<String, PackedStringArray> &kv : p_favorite_properties) {
+		cf->set_value(kv.key, "properties", kv.value);
+	}
+	cf->save(favorite_properties_file);
+}
+
 Vector<String> EditorSettings::get_favorites() const {
 	return favorites;
+}
+
+HashMap<String, PackedStringArray> EditorSettings::get_favorite_properties() const {
+	return favorite_properties;
 }
 
 void EditorSettings::set_recent_dirs(const Vector<String> &p_recent_dirs) {
@@ -1515,22 +1541,50 @@ Vector<String> EditorSettings::get_recent_dirs() const {
 
 void EditorSettings::load_favorites_and_recent_dirs() {
 	String favorites_file;
+	String favorite_properties_file;
 	String recent_dirs_file;
 	if (Engine::get_singleton()->is_project_manager_hint()) {
 		favorites_file = EditorPaths::get_singleton()->get_config_dir().path_join("favorite_dirs");
+		favorite_properties_file = EditorPaths::get_singleton()->get_config_dir().path_join("favorite_properties");
 		recent_dirs_file = EditorPaths::get_singleton()->get_config_dir().path_join("recent_dirs");
 	} else {
 		favorites_file = EditorPaths::get_singleton()->get_project_settings_dir().path_join("favorites");
+		favorite_properties_file = EditorPaths::get_singleton()->get_project_settings_dir().path_join("favorite_properties");
 		recent_dirs_file = EditorPaths::get_singleton()->get_project_settings_dir().path_join("recent_dirs");
 	}
+
+	/// File Favorites
+
 	Ref<FileAccess> f = FileAccess::open(favorites_file, FileAccess::READ);
 	if (f.is_valid()) {
 		String line = f->get_line().strip_edges();
 		while (!line.is_empty()) {
-			favorites.push_back(line);
+			favorites.append(line);
 			line = f->get_line().strip_edges();
 		}
 	}
+
+	/// Inspector Favorites
+
+	Ref<ConfigFile> cf;
+	cf.instantiate();
+	if (cf->load(favorite_properties_file) == OK) {
+		List<String> secs;
+		cf->get_sections(&secs);
+
+		for (String &E : secs) {
+			PackedStringArray properties = PackedStringArray(cf->get_value(E, "properties"));
+			if (EditorNode::get_editor_data().is_type_recognized(E) || ResourceLoader::exists(E, "Script")) {
+				for (const String &property : properties) {
+					if (!favorite_properties[E].has(property)) {
+						favorite_properties[E].push_back(property);
+					}
+				}
+			}
+		}
+	}
+
+	/// Recent Directories
 
 	f = FileAccess::open(recent_dirs_file, FileAccess::READ);
 	if (f.is_valid()) {

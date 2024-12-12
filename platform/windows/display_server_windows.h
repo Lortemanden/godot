@@ -38,8 +38,8 @@
 
 #include "core/config/project_settings.h"
 #include "core/input/input.h"
+#include "core/io/image.h"
 #include "core/os/os.h"
-#include "drivers/unix/ip_unix.h"
 #include "drivers/wasapi/audio_driver_wasapi.h"
 #include "drivers/winmidi/midi_driver_winmidi.h"
 #include "servers/audio_server.h"
@@ -356,8 +356,20 @@ typedef enum _SHC_PROCESS_DPI_AWARENESS {
 	SHC_PROCESS_PER_MONITOR_DPI_AWARE = 2,
 } SHC_PROCESS_DPI_AWARENESS;
 
+#ifndef WS_EX_NOREDIRECTIONBITMAP
+#define WS_EX_NOREDIRECTIONBITMAP 0x00200000L
+#endif
+
+class DropTargetWindows;
+
+#ifndef WDA_EXCLUDEFROMCAPTURE
+#define WDA_EXCLUDEFROMCAPTURE 0x00000011
+#endif
+
 class DisplayServerWindows : public DisplayServer {
 	// No need to register with GDCLASS, it's platform-specific and nothing is added.
+
+	friend class DropTargetWindows;
 
 	_THREAD_SAFE_CLASS_
 
@@ -406,6 +418,8 @@ class DisplayServerWindows : public DisplayServer {
 		TIMER_ID_MOVE_REDRAW = 1,
 		TIMER_ID_WINDOW_ACTIVATION = 2,
 	};
+
+	OSVERSIONINFOW os_ver;
 
 	enum {
 		KEY_EVENT_BUFFER_SIZE = 512
@@ -467,12 +481,15 @@ class DisplayServerWindows : public DisplayServer {
 		bool resizable = true;
 		bool window_focused = false;
 		int activate_state = 0;
-		bool was_maximized = false;
+		bool was_maximized_pre_fs = false;
+		bool was_fullscreen_pre_min = false;
 		bool always_on_top = false;
 		bool no_focus = false;
 		bool exclusive = false;
 		bool context_created = false;
 		bool mpass = false;
+		bool sharp_corners = false;
+		bool hide_from_capture = false;
 
 		// Used to transfer data between events using timer.
 		WPARAM saved_wparam;
@@ -519,11 +536,16 @@ class DisplayServerWindows : public DisplayServer {
 		Callable input_text_callback;
 		Callable drop_files_callback;
 
+		// OLE API
+		DropTargetWindows *drop_target = nullptr;
+
 		WindowID transient_parent = INVALID_WINDOW_ID;
 		HashSet<WindowID> transient_children;
 
 		bool is_popup = false;
 		Rect2i parent_safe_rect;
+
+		bool initialized = false;
 	};
 
 	JoypadWindows *joypad = nullptr;
@@ -591,7 +613,7 @@ class DisplayServerWindows : public DisplayServer {
 	HashMap<int64_t, Vector2> pointer_last_pos;
 
 	void _send_window_event(const WindowData &wd, WindowEvent p_event);
-	void _get_window_style(bool p_main_window, bool p_fullscreen, bool p_multiwindow_fs, bool p_borderless, bool p_resizable, bool p_maximized, bool p_maximized_fs, bool p_no_activate_focus, DWORD &r_style, DWORD &r_style_ex);
+	void _get_window_style(bool p_main_window, bool p_initialized, bool p_fullscreen, bool p_multiwindow_fs, bool p_borderless, bool p_resizable, bool p_minimized, bool p_maximized, bool p_maximized_fs, bool p_no_activate_focus, DWORD &r_style, DWORD &r_style_ex);
 
 	MouseMode mouse_mode;
 	int restore_mouse_trails = 0;
@@ -612,6 +634,8 @@ class DisplayServerWindows : public DisplayServer {
 
 	void _drag_event(WindowID p_window, float p_x, float p_y, int idx);
 	void _touch_event(WindowID p_window, bool p_pressed, float p_x, float p_y, int idx);
+
+	bool _is_always_on_top_recursive(WindowID p_window) const;
 
 	void _update_window_style(WindowID p_window, bool p_repaint = true);
 	void _update_window_mouse_passthrough(WindowID p_window);
@@ -674,6 +698,8 @@ public:
 	virtual Error file_dialog_show(const String &p_title, const String &p_current_directory, const String &p_filename, bool p_show_hidden, FileDialogMode p_mode, const Vector<String> &p_filters, const Callable &p_callback) override;
 	virtual Error file_dialog_with_options_show(const String &p_title, const String &p_current_directory, const String &p_root, const String &p_filename, bool p_show_hidden, FileDialogMode p_mode, const Vector<String> &p_filters, const TypedArray<Dictionary> &p_options, const Callable &p_callback) override;
 
+	virtual void beep() const override;
+
 	virtual void mouse_set_mode(MouseMode p_mode) override;
 	virtual MouseMode mouse_get_mode() const override;
 
@@ -697,6 +723,7 @@ public:
 	virtual float screen_get_refresh_rate(int p_screen = SCREEN_OF_MAIN_WINDOW) const override;
 	virtual Color screen_get_pixel(const Point2i &p_position) const override;
 	virtual Ref<Image> screen_get_image(int p_screen = SCREEN_OF_MAIN_WINDOW) const override;
+	virtual Ref<Image> screen_get_image_rect(const Rect2i &p_rect) const override;
 
 	virtual void screen_set_keep_on(bool p_enable) override; //disable screensaver
 	virtual bool screen_is_kept_on() const override;

@@ -1237,6 +1237,8 @@ MaterialStorage::MaterialStorage() {
 		actions.renames["PI"] = _MKSTR(Math_PI);
 		actions.renames["TAU"] = _MKSTR(Math_TAU);
 		actions.renames["E"] = _MKSTR(Math_E);
+		actions.renames["OUTPUT_IS_SRGB"] = "SHADER_IS_SRGB";
+		actions.renames["CLIP_SPACE_FAR"] = "SHADER_SPACE_FAR";
 		actions.renames["VIEWPORT_SIZE"] = "scene_data.viewport_size";
 
 		actions.renames["FRAGCOORD"] = "gl_FragCoord";
@@ -1276,8 +1278,6 @@ MaterialStorage::MaterialStorage() {
 		actions.renames["CUSTOM1"] = "custom1_attrib";
 		actions.renames["CUSTOM2"] = "custom2_attrib";
 		actions.renames["CUSTOM3"] = "custom3_attrib";
-		actions.renames["OUTPUT_IS_SRGB"] = "SHADER_IS_SRGB";
-		actions.renames["CLIP_SPACE_FAR"] = "SHADER_SPACE_FAR";
 		actions.renames["LIGHT_VERTEX"] = "light_vertex";
 
 		actions.renames["NODE_POSITION_WORLD"] = "model_matrix[3].xyz";
@@ -1368,6 +1368,10 @@ MaterialStorage::MaterialStorage() {
 		actions.render_mode_defines["ambient_light_disabled"] = "#define AMBIENT_LIGHT_DISABLED\n";
 		actions.render_mode_defines["shadow_to_opacity"] = "#define USE_SHADOW_TO_OPACITY\n";
 		actions.render_mode_defines["unshaded"] = "#define MODE_UNSHADED\n";
+		if (!GLES3::Config::get_singleton()->force_vertex_shading) {
+			// If forcing vertex shading, this will be defined already.
+			actions.render_mode_defines["vertex_lighting"] = "#define USE_VERTEX_LIGHTING\n";
+		}
 		actions.render_mode_defines["fog_disabled"] = "#define FOG_DISABLED\n";
 
 		actions.default_filter = ShaderLanguage::FILTER_LINEAR_MIPMAP;
@@ -1375,6 +1379,7 @@ MaterialStorage::MaterialStorage() {
 
 		actions.check_multiview_samplers = RasterizerGLES3::get_singleton()->is_xr_enabled();
 		actions.global_buffer_array_variable = "global_shader_uniforms";
+		actions.instance_uniform_index_variable = "instance_offset";
 
 		shaders.compiler_scene.initialize(actions);
 	}

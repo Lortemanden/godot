@@ -67,9 +67,9 @@ void ProjectListItemControl::_notification(int p_what) {
 
 			favorite_button->set_texture_normal(get_editor_theme_icon(SNAME("Favorites")));
 			if (project_is_missing) {
-				explore_button->set_icon(get_editor_theme_icon(SNAME("FileBroken")));
+				explore_button->set_button_icon(get_editor_theme_icon(SNAME("FileBroken")));
 			} else {
-				explore_button->set_icon(get_editor_theme_icon(SNAME("Load")));
+				explore_button->set_button_icon(get_editor_theme_icon(SNAME("Load")));
 			}
 		} break;
 
@@ -88,7 +88,7 @@ void ProjectListItemControl::_notification(int p_what) {
 				draw_style_box(get_theme_stylebox(SNAME("selected"), SNAME("Tree")), Rect2(Point2(), get_size()));
 			}
 			if (is_hovering) {
-				draw_style_box(get_theme_stylebox(SNAME("hover"), SNAME("Tree")), Rect2(Point2(), get_size()));
+				draw_style_box(get_theme_stylebox(SNAME("hovered"), SNAME("Tree")), Rect2(Point2(), get_size()));
 			}
 
 			draw_line(Point2(0, get_size().y + 1), Point2(get_size().x, get_size().y + 1), get_theme_color(SNAME("guide_color"), SNAME("Tree")));
@@ -196,12 +196,12 @@ void ProjectListItemControl::set_is_missing(bool p_missing) {
 	if (project_is_missing) {
 		project_icon->set_modulate(Color(1, 1, 1, 0.5));
 
-		explore_button->set_icon(get_editor_theme_icon(SNAME("FileBroken")));
+		explore_button->set_button_icon(get_editor_theme_icon(SNAME("FileBroken")));
 		explore_button->set_tooltip_text(TTR("Error: Project is missing on the filesystem."));
 	} else {
 		project_icon->set_modulate(Color(1, 1, 1, 1.0));
 
-		explore_button->set_icon(get_editor_theme_icon(SNAME("Load")));
+		explore_button->set_button_icon(get_editor_theme_icon(SNAME("Load")));
 #if !defined(ANDROID_ENABLED) && !defined(WEB_ENABLED)
 		explore_button->set_tooltip_text(TTR("Show in File Manager"));
 #else
@@ -350,7 +350,7 @@ const char *ProjectList::SIGNAL_PROJECT_ASK_OPEN = "project_ask_open";
 // Helpers.
 
 bool ProjectList::project_feature_looks_like_version(const String &p_feature) {
-	return p_feature.contains(".") && p_feature.substr(0, 3).is_numeric();
+	return p_feature.contains_char('.') && p_feature.substr(0, 3).is_numeric();
 }
 
 // Notifications.
@@ -581,7 +581,7 @@ void ProjectList::sort_projects() {
 		bool item_visible = true;
 		if (!_search_term.is_empty()) {
 			String search_path;
-			if (search_term.contains("/")) {
+			if (search_term.contains_char('/')) {
 				// Search path will match the whole path
 				search_path = item.path;
 			} else {

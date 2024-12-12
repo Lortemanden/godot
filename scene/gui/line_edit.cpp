@@ -45,17 +45,27 @@
 #include "editor/editor_settings.h"
 #endif
 
-void LineEdit::_edit() {
+void LineEdit::edit() {
 	if (!is_inside_tree()) {
 		return;
 	}
 
 	if (!has_focus()) {
 		grab_focus();
+		return;
 	}
 
 	if (!editable || editing) {
 		return;
+	}
+
+	if (select_all_on_focus) {
+		if (Input::get_singleton()->is_mouse_button_pressed(MouseButton::LEFT)) {
+			// Select all when the mouse button is up.
+			pending_select_all_on_focus = true;
+		} else {
+			select_all();
+		}
 	}
 
 	editing = true;
@@ -63,10 +73,9 @@ void LineEdit::_edit() {
 
 	show_virtual_keyboard();
 	queue_redraw();
-	emit_signal(SNAME("editing_toggled"), true);
 }
 
-void LineEdit::_unedit() {
+void LineEdit::unedit() {
 	if (!editing) {
 		return;
 	}
@@ -84,8 +93,6 @@ void LineEdit::_unedit() {
 	if (deselect_on_focus_loss_enabled && !selection.drag_attempt) {
 		deselect();
 	}
-
-	emit_signal(SNAME("editing_toggled"), false);
 }
 
 bool LineEdit::is_editing() const {
@@ -121,6 +128,7 @@ bool LineEdit::has_ime_text() const {
 
 void LineEdit::cancel_ime() {
 	if (!has_ime_text()) {
+		_close_ime_window();
 		return;
 	}
 	ime_text = String();
@@ -133,6 +141,7 @@ void LineEdit::cancel_ime() {
 
 void LineEdit::apply_ime() {
 	if (!has_ime_text()) {
+		_close_ime_window();
 		return;
 	}
 
@@ -390,7 +399,8 @@ void LineEdit::gui_input(const Ref<InputEvent> &p_event) {
 			}
 
 			if (editable && !editing) {
-				_edit();
+				edit();
+				emit_signal(SNAME("editing_toggled"), true);
 			}
 
 			accept_event();
@@ -406,7 +416,8 @@ void LineEdit::gui_input(const Ref<InputEvent> &p_event) {
 			set_caret_at_pixel_pos(b->get_position().x);
 
 			if (!editing) {
-				_edit();
+				edit();
+				emit_signal(SNAME("editing_toggled"), true);
 			}
 
 			if (!paste_buffer.is_empty()) {
@@ -506,7 +517,8 @@ void LineEdit::gui_input(const Ref<InputEvent> &p_event) {
 			}
 
 			if (editable && !editing) {
-				_edit();
+				edit();
+				emit_signal(SNAME("editing_toggled"), true);
 				return;
 			}
 			queue_redraw();
@@ -538,7 +550,9 @@ void LineEdit::gui_input(const Ref<InputEvent> &p_event) {
 				pending_select_all_on_focus = false;
 			}
 
-			show_virtual_keyboard();
+			if (editable) {
+				show_virtual_keyboard();
+			}
 		}
 
 		queue_redraw();
@@ -599,8 +613,49 @@ void LineEdit::gui_input(const Ref<InputEvent> &p_event) {
 	}
 
 	if (editable && !editing && k->is_action_pressed("ui_text_submit", false)) {
-		_edit();
+		edit();
+		emit_signal(SNAME("editing_toggled"), true);
+		accept_event();
 		return;
+	}
+
+	// Open context menu.
+	if (context_menu_enabled) {
+		if (k->is_action("ui_menu", true)) {
+			_update_context_menu();
+			Point2 pos = Point2(get_caret_pixel_pos().x, (get_size().y + theme_cache.font->get_height(theme_cache.font_size)) / 2);
+			menu->set_position(get_screen_position() + pos);
+			menu->reset_size();
+			menu->popup();
+			menu->grab_focus();
+
+			accept_event();
+			return;
+		}
+	}
+
+	if (is_shortcut_keys_enabled()) {
+		if (k->is_action("ui_copy", true)) {
+			copy_text();
+			accept_event();
+			return;
+		}
+
+		if (k->is_action("ui_text_select_all", true)) {
+			select();
+			accept_event();
+			return;
+		}
+
+		if (k->is_action("ui_cut", true)) {
+			if (editable) {
+				cut_text();
+			} else {
+				copy_text();
+			}
+			accept_event();
+			return;
+		}
 	}
 
 	if (!editing) {
@@ -711,30 +766,16 @@ void LineEdit::gui_input(const Ref<InputEvent> &p_event) {
 		return;
 	}
 
-	// Open context menu.
-	if (context_menu_enabled) {
-		if (k->is_action("ui_menu", true)) {
-			_update_context_menu();
-			Point2 pos = Point2(get_caret_pixel_pos().x, (get_size().y + theme_cache.font->get_height(theme_cache.font_size)) / 2);
-			menu->set_position(get_screen_position() + pos);
-			menu->reset_size();
-			menu->popup();
-			menu->grab_focus();
-
-			accept_event();
-			return;
-		}
-	}
-
 	// Default is ENTER and KP_ENTER. Cannot use ui_accept as default includes SPACE.
 	if (k->is_action_pressed("ui_text_submit")) {
-		emit_signal(SNAME("text_submitted"), text);
+		emit_signal(SceneStringName(text_submitted), text);
 		if (DisplayServer::get_singleton()->has_feature(DisplayServer::FEATURE_VIRTUAL_KEYBOARD) && virtual_keyboard_enabled) {
 			DisplayServer::get_singleton()->virtual_keyboard_hide();
 		}
 
 		if (editing) {
-			_unedit();
+			unedit();
+			emit_signal(SNAME("editing_toggled"), false);
 		}
 
 		accept_event();
@@ -743,7 +784,8 @@ void LineEdit::gui_input(const Ref<InputEvent> &p_event) {
 
 	if (k->is_action("ui_cancel")) {
 		if (editing) {
-			_unedit();
+			unedit();
+			emit_signal(SNAME("editing_toggled"), false);
 		}
 
 		accept_event();
@@ -751,25 +793,6 @@ void LineEdit::gui_input(const Ref<InputEvent> &p_event) {
 	}
 
 	if (is_shortcut_keys_enabled()) {
-		if (k->is_action("ui_copy", true)) {
-			copy_text();
-			accept_event();
-			return;
-		}
-
-		if (k->is_action("ui_text_select_all", true)) {
-			select();
-			accept_event();
-			return;
-		}
-
-		// Cut / Paste
-		if (k->is_action("ui_cut", true)) {
-			cut_text();
-			accept_event();
-			return;
-		}
-
 		if (k->is_action("ui_paste", true)) {
 			paste_text();
 			accept_event();
@@ -1332,24 +1355,17 @@ void LineEdit::_notification(int p_what) {
 		} break;
 
 		case NOTIFICATION_FOCUS_ENTER: {
-			if (select_all_on_focus) {
-				if (Input::get_singleton()->is_mouse_button_pressed(MouseButton::LEFT)) {
-					// Select all when the mouse button is up.
-					pending_select_all_on_focus = true;
-				} else {
-					select_all();
-				}
-			}
-
 			// Only allow editing if the LineEdit is not focused with arrow keys.
 			if (!(Input::get_singleton()->is_action_pressed("ui_up") || Input::get_singleton()->is_action_pressed("ui_down") || Input::get_singleton()->is_action_pressed("ui_left") || Input::get_singleton()->is_action_pressed("ui_right"))) {
-				_edit();
+				edit();
+				emit_signal(SNAME("editing_toggled"), true);
 			}
 		} break;
 
 		case NOTIFICATION_FOCUS_EXIT: {
 			if (editing) {
-				_unedit();
+				unedit();
+				emit_signal(SNAME("editing_toggled"), false);
 			}
 		} break;
 
@@ -1443,13 +1459,12 @@ void LineEdit::undo() {
 		return;
 	}
 
-	if (undo_stack_pos == nullptr) {
-		if (undo_stack.size() <= 1) {
-			return;
-		}
-		undo_stack_pos = undo_stack.back();
-	} else if (undo_stack_pos == undo_stack.front()) {
+	if (!has_undo()) {
 		return;
+	}
+
+	if (undo_stack_pos == nullptr) {
+		undo_stack_pos = undo_stack.back();
 	}
 
 	deselect();
@@ -1470,10 +1485,7 @@ void LineEdit::redo() {
 		return;
 	}
 
-	if (undo_stack_pos == nullptr) {
-		return;
-	}
-	if (undo_stack_pos == undo_stack.back()) {
+	if (!has_redo()) {
 		return;
 	}
 
@@ -2138,7 +2150,8 @@ void LineEdit::set_editable(bool p_editable) {
 	editable = p_editable;
 
 	if (!editable && editing) {
-		_unedit();
+		unedit();
+		emit_signal(SNAME("editing_toggled"), false);
 	}
 	_validate_caret_can_draw();
 
@@ -2474,11 +2487,27 @@ bool LineEdit::is_drag_and_drop_selection_enabled() const {
 	return drag_and_drop_selection_enabled;
 }
 
+void LineEdit::_texture_changed() {
+	_fit_to_width();
+	update_minimum_size();
+	queue_redraw();
+}
+
 void LineEdit::set_right_icon(const Ref<Texture2D> &p_icon) {
 	if (right_icon == p_icon) {
 		return;
 	}
+
+	if (right_icon.is_valid()) {
+		right_icon->disconnect_changed(callable_mp(this, &LineEdit::_texture_changed));
+	}
+
 	right_icon = p_icon;
+
+	if (right_icon.is_valid()) {
+		right_icon->connect_changed(callable_mp(this, &LineEdit::_texture_changed));
+	}
+
 	_fit_to_width();
 	update_minimum_size();
 	queue_redraw();
@@ -2759,6 +2788,8 @@ void LineEdit::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_horizontal_alignment", "alignment"), &LineEdit::set_horizontal_alignment);
 	ClassDB::bind_method(D_METHOD("get_horizontal_alignment"), &LineEdit::get_horizontal_alignment);
 
+	ClassDB::bind_method(D_METHOD("edit"), &LineEdit::edit);
+	ClassDB::bind_method(D_METHOD("unedit"), &LineEdit::unedit);
 	ClassDB::bind_method(D_METHOD("is_editing"), &LineEdit::is_editing);
 	ClassDB::bind_method(D_METHOD("clear"), &LineEdit::clear);
 	ClassDB::bind_method(D_METHOD("select", "from", "to"), &LineEdit::select, DEFVAL(0), DEFVAL(-1));

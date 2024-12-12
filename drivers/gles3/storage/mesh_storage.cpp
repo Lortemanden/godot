@@ -844,6 +844,7 @@ void MeshStorage::mesh_clear(RID p_mesh) {
 	mesh->surface_count = 0;
 	mesh->material_cache.clear();
 	mesh->has_bone_weights = false;
+	mesh->aabb = AABB();
 	mesh->dependency.changed_notify(Dependency::DEPENDENCY_CHANGED_MESH);
 
 	for (Mesh *E : mesh->shadow_owners) {
@@ -1974,6 +1975,10 @@ void MeshStorage::_multimesh_set_buffer(RID p_multimesh, const Vector<float> &p_
 	}
 }
 
+RID MeshStorage::_multimesh_get_buffer_rd_rid(RID p_multimesh) const {
+	ERR_FAIL_V_MSG(RID(), "GLES3 does not contain a Rid for the multimesh buffer.");
+}
+
 Vector<float> MeshStorage::_multimesh_get_buffer(RID p_multimesh) const {
 	MultiMesh *multimesh = multimesh_owner.get_or_null(p_multimesh);
 	ERR_FAIL_NULL_V(multimesh, Vector<float>());
@@ -2201,7 +2206,7 @@ void MeshStorage::skeleton_allocate_data(RID p_skeleton, int p_bones, bool p_2d_
 		glBindTexture(GL_TEXTURE_2D, 0);
 		GLES3::Utilities::get_singleton()->texture_allocated_data(skeleton->transforms_texture, skeleton->data.size() * sizeof(float), "Skeleton transforms texture");
 
-		memset(skeleton->data.ptrw(), 0, skeleton->data.size() * sizeof(float));
+		memset(skeleton->data.ptr(), 0, skeleton->data.size() * sizeof(float));
 
 		_skeleton_make_dirty(skeleton);
 	}
@@ -2232,7 +2237,7 @@ void MeshStorage::skeleton_bone_set_transform(RID p_skeleton, int p_bone, const 
 	ERR_FAIL_INDEX(p_bone, skeleton->size);
 	ERR_FAIL_COND(skeleton->use_2d);
 
-	float *dataptr = skeleton->data.ptrw() + p_bone * 12;
+	float *dataptr = skeleton->data.ptr() + p_bone * 12;
 
 	dataptr[0] = p_transform.basis.rows[0][0];
 	dataptr[1] = p_transform.basis.rows[0][1];
@@ -2284,7 +2289,7 @@ void MeshStorage::skeleton_bone_set_transform_2d(RID p_skeleton, int p_bone, con
 	ERR_FAIL_INDEX(p_bone, skeleton->size);
 	ERR_FAIL_COND(!skeleton->use_2d);
 
-	float *dataptr = skeleton->data.ptrw() + p_bone * 8;
+	float *dataptr = skeleton->data.ptr() + p_bone * 8;
 
 	dataptr[0] = p_transform.columns[0][0];
 	dataptr[1] = p_transform.columns[1][0];

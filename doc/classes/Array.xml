@@ -183,17 +183,17 @@
 
 				public override void _Ready()
 				{
-				    // Prints true (3/3 elements evaluate to true).
+				    // Prints True (3/3 elements evaluate to true).
 				    GD.Print(new Godot.Collections.Array&gt;int&lt; { 6, 10, 6 }.All(GreaterThan5));
-				    // Prints false (1/3 elements evaluate to true).
+				    // Prints False (1/3 elements evaluate to true).
 				    GD.Print(new Godot.Collections.Array&gt;int&lt; { 4, 10, 4 }.All(GreaterThan5));
-				    // Prints false (0/3 elements evaluate to true).
+				    // Prints False (0/3 elements evaluate to true).
 				    GD.Print(new Godot.Collections.Array&gt;int&lt; { 4, 4, 4 }.All(GreaterThan5));
-				    // Prints true (0/0 elements evaluate to true).
+				    // Prints True (0/0 elements evaluate to true).
 				    GD.Print(new Godot.Collections.Array&gt;int&lt; { }.All(GreaterThan5));
 
 				    // Same as the first line above, but using a lambda function.
-				    GD.Print(new Godot.Collections.Array&gt;int&lt; { 6, 10, 6 }.All(element =&gt; element &gt; 5)); // Prints true
+				    GD.Print(new Godot.Collections.Array&gt;int&lt; { 6, 10, 6 }.All(element =&gt; element &gt; 5)); // Prints True
 				}
 				[/csharp]
 				[/codeblocks]
@@ -422,6 +422,13 @@
 				[b]Note:[/b] Unlike with the [code][][/code] operator ([code]array[0][/code]), an error is generated without stopping project execution.
 			</description>
 		</method>
+		<method name="get" qualifiers="const">
+			<return type="Variant" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Returns the element at the given [param index] in the array. This is the same as using the [code][][/code] operator ([code]array[index][/code]).
+			</description>
+		</method>
 		<method name="get_typed_builtin" qualifiers="const">
 			<return type="int" />
 			<description>
@@ -455,10 +462,10 @@
 				[csharp]
 				var arr = new Godot.Collections.Array { "inside", 7 };
 				// By C# convention, this method is renamed to `Contains`.
-				GD.Print(arr.Contains("inside"));  // Prints true
-				GD.Print(arr.Contains("outside")); // Prints false
-				GD.Print(arr.Contains(7));         // Prints true
-				GD.Print(arr.Contains("7"));       // Prints false
+				GD.Print(arr.Contains("inside"));  // Prints True
+				GD.Print(arr.Contains("outside")); // Prints False
+				GD.Print(arr.Contains(7));         // Prints True
+				GD.Print(arr.Contains("7"));       // Prints False
 				[/csharp]
 				[/codeblocks]
 				In GDScript, this is equivalent to the [code]in[/code] operator:
@@ -691,6 +698,14 @@
 			<param index="1" name="from" type="int" default="-1" />
 			<description>
 				Returns the index of the [b]last[/b] element of the array that causes [param method] to return [code]true[/code], or [code]-1[/code] if there are none. The search's start can be specified with [param from], continuing to the beginning of the array. This method is the reverse of [method find_custom].
+			</description>
+		</method>
+		<method name="set">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="value" type="Variant" />
+			<description>
+				Sets the value of the element at the given [param index] to the given [param value]. This will not change the size of the array, it only changes the value at an index already in the array. This is the same as using the [code][][/code] operator ([code]array[index] = value[/code]).
 			</description>
 		</method>
 		<method name="shuffle">

@@ -213,6 +213,23 @@ void LightStorage::light_set_cull_mask(RID p_light, uint32_t p_mask) {
 	light->dependency.changed_notify(Dependency::DEPENDENCY_CHANGED_LIGHT);
 }
 
+void LightStorage::light_set_shadow_caster_mask(RID p_light, uint32_t p_caster_mask) {
+	Light *light = light_owner.get_or_null(p_light);
+	ERR_FAIL_NULL(light);
+
+	light->shadow_caster_mask = p_caster_mask;
+
+	light->version++;
+	light->dependency.changed_notify(Dependency::DEPENDENCY_CHANGED_LIGHT);
+}
+
+uint32_t LightStorage::light_get_shadow_caster_mask(RID p_light) const {
+	Light *light = light_owner.get_or_null(p_light);
+	ERR_FAIL_NULL_V(light, 0);
+
+	return light->shadow_caster_mask;
+}
+
 void LightStorage::light_set_distance_fade(RID p_light, bool p_enabled, float p_begin, float p_shadow, float p_length) {
 	Light *light = light_owner.get_or_null(p_light);
 	ERR_FAIL_NULL(light);
@@ -1388,7 +1405,7 @@ bool LightStorage::shadow_atlas_update_light(RID p_atlas, RID p_light_instance, 
 		old_shadow = old_key & SHADOW_INDEX_MASK;
 
 		// Only re-allocate if a better option is available, and enough time has passed.
-		should_realloc = shadow_atlas->quadrants[old_quadrant].subdivision != (uint32_t)best_subdiv && (shadow_atlas->quadrants[old_quadrant].shadows[old_shadow].alloc_tick - tick > shadow_atlas_realloc_tolerance_msec);
+		should_realloc = shadow_atlas->quadrants[old_quadrant].subdivision != (uint32_t)best_subdiv && (tick - shadow_atlas->quadrants[old_quadrant].shadows[old_shadow].alloc_tick > shadow_atlas_realloc_tolerance_msec);
 		should_redraw = shadow_atlas->quadrants[old_quadrant].shadows[old_shadow].version != p_light_version;
 
 		if (!should_realloc) {
